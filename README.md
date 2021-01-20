@@ -3,9 +3,22 @@ Simple Enhanced ShockBurst emulation on nRF5x Platform -- (nRF52422/PCA10028 boa
 It should also work with the nRF53832/PCA10040 board as well.
 
 **NOTE:** You will need two nRF boards: one to send and one to receive.  
-Since the protocol is ESB with ACKs the sending side (PTX) will indicate failure until it gets ACKs back from the receiver (PRX).
 
-See the information at [bitcraze](https://wiki.bitcraze.io/misc:hacks:hackrf) for directions on how to sniff the nRF24 packets.
+
+## Building
+This project was built with Zephyr V2.4.00 in Mac OSx 10.15.7 (Catalina).  
+You will need to modify the CMakeList.txt to select the target board and the PTX (sender) or PRX (receiver) side.  
+It is assumed you have Segger's JLink installed on your build system: all Nordic dev-kit boards directly include support JLink, so its recommended to use it.
+
+## Running and Debugging
+I used the Ozone debugger from Segger, but the gdb debugger should work as well ("make debug" will kick off gdb process)
+If you want to see the console messages, don't have or want Ozone, then I have included a simple "rtt.sh" script which will display the RTT console output.
+
+Since the interaction is based on ESB, the sending side (PTX) will indicate transmit failures until it gets a reply back from the receiver (PRX).
+This means that you should probably start the PRX side first, then the PTX.  The PRX side will quitely wait for the PTX side to start sending.
+
+## Sniffing nRF24 packets
+See the information at [bitcraze](https://wiki.bitcraze.io/misc:hacks:hackrf) for directions on how to sniff the nRF24 packets.  
 The output of the sniffer is shown below.
 
 ```
