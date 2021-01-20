@@ -24,3 +24,5 @@ nrf24-btle-decoder, decode NRF24L01+ and Bluetooth Low Energy packets using RTL-
 1611106565.340703 NRF24 Packet start sample 9557865,  Threshold:-346,  Address: 0xE7E7E7E7E7 length:8, pid:2, no_ack:1, CRC:0xCB90 data:01 C9 03 04 05 06 07 08 
 1611106566.341892 NRF24 Packet start sample 11559567, Threshold:-446,  Address: 0xE7E7E7E7E7 length:8, pid:2, no_ack:1, CRC:0x0A56 data:01 CD 03 04 05 06 07 08 
 ```
+
+ ![Hardware setup](https://github.com/foldedtoad/nrf24_esb/blob/master/docs/gnuradio-companion.png)
