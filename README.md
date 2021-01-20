@@ -2,11 +2,13 @@
 Simple Enhanced ShockBurst emulation on nRF5x Platform -- (nRF52422/PCA10028 board)
 It should also work with the nRF53832/PCA10040 board as well.
 
-NOTE: You will need two nRF boards: one to send and one to receive.  
+**NOTE:** You will need two nRF boards: one to send and one to receive.  
 Since the protocol is ESB with ACKs the sending side (PTX) will indicate failure until it gets ACKs back from the receiver (PRX).
 
-See the information at bitcraze https://wiki.bitcraze.io/misc:hacks:hackrf for directions on how to sniff the nRF24 packets.
+See the information at [bitcraze](https://wiki.bitcraze.io/misc:hacks:hackrf) for directions on how to sniff the nRF24 packets.
+The output of the sniffer is shown below.
 
+```
 knots:bin $ mkfifo /tmp/fifo
 knots:bin$  cat /tmp/fifo | ./nrf24-btle-decoder -d 1 -l 8
 nrf24-btle-decoder, decode NRF24L01+ and Bluetooth Low Energy packets using RTL-SDR v0.4
@@ -21,3 +23,4 @@ nrf24-btle-decoder, decode NRF24L01+ and Bluetooth Low Energy packets using RTL-
 1611106564.843243 NRF24 Packet start sample 8557092,  Threshold:-1261, Address: 0xE7E7E7E7E7 length:8, pid:0, no_ack:1, CRC:0x65F7 data:01 C7 03 04 05 06 07 08 
 1611106565.340703 NRF24 Packet start sample 9557865,  Threshold:-346,  Address: 0xE7E7E7E7E7 length:8, pid:2, no_ack:1, CRC:0xCB90 data:01 C9 03 04 05 06 07 08 
 1611106566.341892 NRF24 Packet start sample 11559567, Threshold:-446,  Address: 0xE7E7E7E7E7 length:8, pid:2, no_ack:1, CRC:0x0A56 data:01 CD 03 04 05 06 07 08 
+```
