@@ -6,7 +6,7 @@ It should also work with the nRF53832/PCA10040 board as well.
 
 
 ## Building
-This project was built with Zephyr V2.5 in Mac OSx 10.15.7 (Catalina).  
+This project was built with Zephyr V2.5 in Ubuntu 18.04.  
 You will need to modify the CMakeList.txt to select the target board and the PTX (sender) or PRX (receiver) side.  
 It is assumed you have Segger's JLink installed on your build system: all Nordic dev-kit boards directly include support JLink, so its recommended to use it.
 
