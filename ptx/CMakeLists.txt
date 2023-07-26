@@ -1,7 +1,18 @@
-# SPDX-License-Identifier: Apache-2.0
+#   Configure and Make PTX side
+#
+set(BOARD nrf51dk_nrf51422)
+#set(BOARD nrf52840dk_nrf52840)
 
-zephyr_include_directories(.)
+cmake_minimum_required(VERSION 3.20.0)
 
-#add_subdirectory(prx build/prx)
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(esb_ptx)
 
-target_sources(app PRIVATE main.c)
+FILE(GLOB app_sources ./*.c)
+target_sources(app PRIVATE
+  ${app_sources}
+  )
+
+add_subdirectory(../lib/esb build/esb)
+
+# zephyr_compile_options(-save-temps)
