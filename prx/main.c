@@ -3,23 +3,29 @@
  *
  * SPDX-License-Identifier: LicenseRef-BSD-5-Clause-Nordic
  */
-#include <drivers/clock_control.h>
-#include <drivers/clock_control/nrf_clock_control.h>
-#include <drivers/gpio.h>
-#include <irq.h>
-#include <logging/log.h>
+#include <zephyr/drivers/clock_control.h>
+#include <zephyr/drivers/clock_control/nrf_clock_control.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/irq.h>
+#include <zephyr/logging/log.h>
 #include <nrf.h>
 #include <esb.h>
-#include <zephyr.h>
+#include <zephyr/kernel.h>
 #include <zephyr/types.h>
 
-//LOG_MODULE_REGISTER(esb_prx, CONFIG_ESB_PRX_APP_LOG_LEVEL);
 LOG_MODULE_REGISTER(esb_prx, 3);
 
 #define LED_ON 0
 #define LED_OFF 1
 
-#define DT_DRV_COMPAT nordic_nrf_clock
+static const struct device *const clock0 = DEVICE_DT_GET_ONE(nordic_nrf_clock);
+
+static const struct gpio_dt_spec leds[] = {
+    GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios),
+    GPIO_DT_SPEC_GET(DT_ALIAS(led3), gpios),
+};
 
 static const struct device *led_port;
 static struct esb_payload rx_payload;
@@ -28,24 +34,16 @@ static struct esb_payload tx_payload = ESB_CREATE_PAYLOAD(0,
 
 static int leds_init(void)
 {
-    led_port = device_get_binding(DT_GPIO_LABEL(DT_ALIAS(led0), gpios));
-    if (!led_port) {
-        LOG_ERR("Could not bind to LED port %s",
-            DT_GPIO_LABEL(DT_ALIAS(led0), gpios));
-        return -EIO;
+    if (!device_is_ready(leds[0].port)) {
+        LOG_ERR("LEDs port not ready");
+        return -ENODEV;
     }
 
-    const uint8_t pins[] = {DT_GPIO_PIN(DT_ALIAS(led0), gpios),
-                 DT_GPIO_PIN(DT_ALIAS(led1), gpios),
-                 DT_GPIO_PIN(DT_ALIAS(led2), gpios),
-                 DT_GPIO_PIN(DT_ALIAS(led3), gpios)};
-
-    for (size_t i = 0; i < ARRAY_SIZE(pins); i++) {
-        int err = gpio_pin_configure(led_port, pins[i], GPIO_OUTPUT);
+    for (size_t i = 0; i < ARRAY_SIZE(leds); i++) {
+        int err = gpio_pin_configure_dt(&leds[i], GPIO_OUTPUT);
 
         if (err) {
             LOG_ERR("Unable to configure LED%u, err %d.", i, err);
-            led_port = NULL;
             return err;
         }
     }
@@ -108,15 +106,14 @@ void event_handler(struct esb_evt const *event)
 int clocks_start(void)
 {
     int err;
-    const struct device *clk;
 
-    clk = device_get_binding(DT_INST_LABEL(0));
-    if (!clk) {
-        LOG_ERR("Clock device not found!");
-        return -EIO;
+    /* Is clock available? */
+    if (!device_is_ready(clock0)) {
+        printk("%s: device not ready.\n", clock0->name);
+        return 0;
     }
 
-    err = clock_control_on(clk, CLOCK_CONTROL_NRF_SUBSYS_HF);
+    err = clock_control_on(clock0, CLOCK_CONTROL_NRF_SUBSYS_HF);
     if (err && (err != -EINPROGRESS)) {
         LOG_ERR("HF clock start fail: %d", err);
         return err;
@@ -124,7 +121,7 @@ int clocks_start(void)
 
     /* Block until clock is started.
      */
-    while (clock_control_get_status(clk, CLOCK_CONTROL_NRF_SUBSYS_HF) !=
+    while (clock_control_get_status(clock0, CLOCK_CONTROL_NRF_SUBSYS_HF) !=
         CLOCK_CONTROL_STATUS_ON) {
 
     }
