@@ -6,8 +6,9 @@ It should also work with the nRF53832/PCA10040 board as well.
 
 
 ## Building
-This project was built with Zephyr V3.4 in Ubuntu 22.04 LTS. 
+This project was built with Zephyr V3.4 in Ubuntu 22.04 LTS.   
 You will need to build each executable: PTX (sender) and PRX (receiver).  
+
 To build, enter the disired directory, either ptx or prx.  
 Next invoke the "./comfigure.sh" command to setup the build environment.   
 Finally, enter the build directory and run make.  
