@@ -18,6 +18,8 @@ LOG_MODULE_REGISTER(esb_ptx, 3);
 #define LED_ON 0
 #define LED_OFF 1
 
+static void leds_update(uint8_t value);
+
 static const struct device *const clock0 = DEVICE_DT_GET_ONE(nordic_nrf_clock);
 
 static const struct gpio_dt_spec leds[] = {
@@ -28,10 +30,9 @@ static const struct gpio_dt_spec leds[] = {
 };
 
 static bool ready = true;
-static const struct device *led_port;
 static struct esb_payload rx_payload;
 static struct esb_payload tx_payload = ESB_CREATE_PAYLOAD(0,
-    'p', 't', 'x', ' ', 'm', 'a', 'i', 'n', 0);
+    '[', '0', ']', ' ', 'd', 'a', 't', 'a', 0);
 
 #define _RADIO_SHORTS_COMMON                                                   \
     (RADIO_SHORTS_READY_START_Msk | RADIO_SHORTS_END_DISABLE_Msk |         \
@@ -70,7 +71,7 @@ int clocks_start(void)
 
     /* Is clock available? */
     if (!device_is_ready(clock0)) {
-        printk("%s: device not ready.\n", clock0->name);
+        printk("%s: device not ready.", clock0->name);
         return 0;
     }
 
@@ -113,7 +114,7 @@ int esb_initialize(void)
     config.mode = ESB_MODE_PTX;
     config.selective_auto_ack = true;
 
-#else  // ESP  (legacy)
+#else  // ESB  (legacy)
     uint8_t base_addr_0[4] = {0x22, 0x33, 0x44, 0x55}; 
     uint8_t base_addr_1[4] = {0xBB, 0xCC, 0xDD, 0xEE};
     uint8_t addr_prefix[8] = {0x11, 0xAA, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8}; 
@@ -186,21 +187,15 @@ static void leds_update(uint8_t value)
     bool led2_status = !(value % 8 > 2 && value % 8 <= 6);
     bool led3_status = !(value % 8 > 3);
 
-    gpio_port_pins_t mask =
-        1 << DT_GPIO_PIN(DT_ALIAS(led0), gpios) |
-        1 << DT_GPIO_PIN(DT_ALIAS(led1), gpios) |
-        1 << DT_GPIO_PIN(DT_ALIAS(led2), gpios) |
-        1 << DT_GPIO_PIN(DT_ALIAS(led3), gpios);
+    gpio_port_pins_t mask = BIT(leds[0].pin) | BIT(leds[1].pin) |
+                            BIT(leds[2].pin) | BIT(leds[3].pin);
 
-    gpio_port_value_t val =
-        led0_status << DT_GPIO_PIN(DT_ALIAS(led0), gpios) |
-        led1_status << DT_GPIO_PIN(DT_ALIAS(led1), gpios) |
-        led2_status << DT_GPIO_PIN(DT_ALIAS(led2), gpios) |
-        led3_status << DT_GPIO_PIN(DT_ALIAS(led3), gpios);
+    gpio_port_value_t val = led0_status << leds[0].pin |
+                            led1_status << leds[1].pin |
+                            led2_status << leds[2].pin |
+                            led3_status << leds[3].pin;
 
-    if (led_port != NULL) {
-        (void)gpio_port_set_masked_raw(led_port, mask, val);
-    }
+    (void)gpio_port_set_masked_raw(leds[0].port, mask, val);
 }
 
 void main(void)
@@ -230,12 +225,15 @@ void main(void)
         if (ready) {
             ready = false;
             esb_flush_tx();
-            leds_update(tx_payload.data[1]);
+            leds_update('0' - tx_payload.data[1]);
 
             err = esb_write_payload(&tx_payload);
             if (err) {
                 LOG_ERR("Payload write failed, err %d", err);
             }
+            tx_payload.data[1]++;
+            if (tx_payload.data[1] > '9')
+                tx_payload.data[1] = '0';
         }
         k_sleep(K_MSEC(100));
         LOG_INF("send");

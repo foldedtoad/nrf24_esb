@@ -778,8 +778,8 @@ static void on_radio_disabled_rx(void)
 	//LOG_INF("%s[%d]", __func__, __LINE__);
 
 	if (NRF_RADIO->CRCSTATUS == 0) {
-		clear_events_restart_rx();
 		LOG_INF("CRC Status: 0x%x", NRF_RADIO->CRCSTATUS);
+		clear_events_restart_rx();
 		//return;
 	}
 
@@ -804,7 +804,6 @@ static void on_radio_disabled_rx(void)
 	    ((rx_payload_buffer[1] & 0x01) == 1)) {
 		NRF_RADIO->SHORTS = radio_shorts_common |
 				    RADIO_SHORTS_DISABLED_RXEN_Msk;
-
 		
 		switch (esb_cfg.protocol) {
 		case ESB_PROTOCOL_ESB_DPL:
@@ -871,8 +870,6 @@ static void get_and_clear_irqs(uint32_t *interrupts)
 
 static void RADIO_IRQHandler(void)
 {
-	//LOG_INF("%s[%d]", __func__, __LINE__);
-
 	if (NRF_RADIO->EVENTS_READY &&
 	    (NRF_RADIO->INTENSET & RADIO_INTENSET_READY_Msk)) {
 		NRF_RADIO->EVENTS_READY = 0;
@@ -888,7 +885,6 @@ static void RADIO_IRQHandler(void)
 		if (on_radio_end) {
 			on_radio_end();
 		}
-		LOG_INF("%s[%d]", __func__, __LINE__);
 	}
 
 	if (NRF_RADIO->EVENTS_DISABLED &&
@@ -899,8 +895,7 @@ static void RADIO_IRQHandler(void)
 		 */
 		if (on_radio_disabled) {
 			on_radio_disabled();
-		}
-		LOG_INF("%s[%d]", __func__, __LINE__);		
+		}		
 	}
 }
 

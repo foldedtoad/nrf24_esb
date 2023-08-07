@@ -18,6 +18,8 @@ LOG_MODULE_REGISTER(esb_prx, 3);
 #define LED_ON 0
 #define LED_OFF 1
 
+static void leds_update(uint8_t value);
+
 static const struct device *const clock0 = DEVICE_DT_GET_ONE(nordic_nrf_clock);
 
 static const struct gpio_dt_spec leds[] = {
@@ -27,10 +29,9 @@ static const struct gpio_dt_spec leds[] = {
     GPIO_DT_SPEC_GET(DT_ALIAS(led3), gpios),
 };
 
-static const struct device *led_port;
 static struct esb_payload rx_payload;
 static struct esb_payload tx_payload = ESB_CREATE_PAYLOAD(0,
-    'p', 't', 'x', ' ', 'm', 'a', 'i', 'n', 0);
+    '[', '0', ']', ' ', 'd', 'a', 't', 'a', 0);
 
 static int leds_init(void)
 {
@@ -58,21 +59,15 @@ static void leds_update(uint8_t value)
     bool led2_status = !(value % 8 > 2 && value % 8 <= 6);
     bool led3_status = !(value % 8 > 3);
 
-    gpio_port_pins_t mask =
-        1 << DT_GPIO_PIN(DT_ALIAS(led0), gpios) |
-        1 << DT_GPIO_PIN(DT_ALIAS(led1), gpios) |
-        1 << DT_GPIO_PIN(DT_ALIAS(led2), gpios) |
-        1 << DT_GPIO_PIN(DT_ALIAS(led3), gpios);
+    gpio_port_pins_t mask = BIT(leds[0].pin) | BIT(leds[1].pin) |
+                            BIT(leds[2].pin) | BIT(leds[3].pin);
 
-    gpio_port_value_t val =
-        led0_status << DT_GPIO_PIN(DT_ALIAS(led0), gpios) |
-        led1_status << DT_GPIO_PIN(DT_ALIAS(led1), gpios) |
-        led2_status << DT_GPIO_PIN(DT_ALIAS(led2), gpios) |
-        led3_status << DT_GPIO_PIN(DT_ALIAS(led3), gpios);
+    gpio_port_value_t val = led0_status << leds[0].pin |
+                            led1_status << leds[1].pin |
+                            led2_status << leds[2].pin |
+                            led3_status << leds[3].pin;
 
-    if (led_port != NULL) {
-        gpio_port_set_masked_raw(led_port, mask, val);
-    }
+    (void)gpio_port_set_masked_raw(leds[0].port, mask, val);
 }
 
 void event_handler(struct esb_evt const *event)
@@ -88,12 +83,13 @@ void event_handler(struct esb_evt const *event)
         if (esb_read_rx_payload(&rx_payload) == 0) {
 
             int length = strnlen(rx_payload.data, 32);
-            if (length < 32)
+            if (length < 32) {
                 LOG_INF("[%d] %s", length, rx_payload.data);
-            else
+                leds_update('0' - rx_payload.data[1]);
+            }
+            else {
                 LOG_HEXDUMP_INF(rx_payload.data, length, "Packet received");
-
-            leds_update(rx_payload.data[1]);
+            }
         } 
         else {
             LOG_ERR("Error while reading rx packet");
@@ -108,7 +104,7 @@ int clocks_start(void)
 
     /* Is clock available? */
     if (!device_is_ready(clock0)) {
-        printk("%s: device not ready.\n", clock0->name);
+        printk("%s: device not ready.", clock0->name);
         return 0;
     }
 
@@ -151,7 +147,7 @@ int esb_initialize(void)
     config.mode = ESB_MODE_PRX;
     config.selective_auto_ack = true;
 
-#else  // ESP  (legacy)
+#else  // ESB  (legacy)
     uint8_t base_addr_0[4] = {0x22, 0x33, 0x44, 0x55}; 
     uint8_t base_addr_1[4] = {0xBB, 0xCC, 0xDD, 0xEE};
     uint8_t addr_prefix[8] = {0x11, 0xAA, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8}; 
