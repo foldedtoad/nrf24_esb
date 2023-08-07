@@ -31,7 +31,7 @@ static bool ready = true;
 static const struct device *led_port;
 static struct esb_payload rx_payload;
 static struct esb_payload tx_payload = ESB_CREATE_PAYLOAD(0,
-    0x01, 0x00, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08);
+    'p', 't', 'x', ' ', 'm', 'a', 'i', 'n', 0);
 
 #define _RADIO_SHORTS_COMMON                                                   \
     (RADIO_SHORTS_READY_START_Msk | RADIO_SHORTS_END_DISABLE_Msk |         \
@@ -94,9 +94,12 @@ int clocks_start(void)
 int esb_initialize(void)
 {
     int err;
+    int channel = -1;
+
     /* These are arbitrary default addresses. In end user products
      * different addresses should be used for each set of devices.
      */
+#if 0  // ESB_DPL   
     uint8_t base_addr_0[4] = {0xE7, 0xE7, 0xE7, 0xE7};
     uint8_t base_addr_1[4] = {0xC2, 0xC2, 0xC2, 0xC2};
     uint8_t addr_prefix[8] = {0xE7, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8};
@@ -110,11 +113,39 @@ int esb_initialize(void)
     config.mode = ESB_MODE_PTX;
     config.selective_auto_ack = true;
 
+#else  // ESP  (legacy)
+#if 1    
+    uint8_t base_addr_0[4] = {0x22, 0x33, 0x44, 0x55}; 
+    uint8_t base_addr_1[4] = {0xBB, 0xCC, 0xDD, 0xEE};
+    uint8_t addr_prefix[8] = {0x11, 0xAA, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8}; 
+#else
+    uint8_t base_addr_0[4] = {0xE7, 0xE7, 0xE7, 0xE7};
+    uint8_t base_addr_1[4] = {0xC2, 0xC2, 0xC2, 0xC2};
+    uint8_t addr_prefix[8] = {0xE7, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8};     
+#endif
+
+    struct esb_config config = ESB_LEGACY_CONFIG;
+ 
+    config.protocol = ESB_PROTOCOL_ESB;
+    config.retransmit_delay = 600;
+    config.bitrate = ESB_BITRATE_2MBPS;
+    config.event_handler = event_handler;
+    config.mode = ESB_MODE_PTX;
+    config.selective_auto_ack = false;
+#endif
+
     err = esb_init(&config);
 
     if (err) {
         return err;
     }
+
+    err = esb_set_rf_channel(0);  // 2.400GHz
+    if (err) {
+        return err;
+    }
+    esb_get_rf_channel(&channel);
+    LOG_INF("Using channel: %dMHz", 2400 + channel);
 
     err = esb_set_base_address_0(base_addr_0);
     if (err) {
@@ -181,7 +212,7 @@ void main(void)
 {
     int err;
 
-    LOG_INF("Enhanced ShockBurst ptx sample");
+    LOG_INF("ptx sample");
 
     err = clocks_start();
     if (err) {
@@ -210,7 +241,6 @@ void main(void)
             if (err) {
                 LOG_ERR("Payload write failed, err %d", err);
             }
-            tx_payload.data[1]++;
         }
         k_sleep(K_MSEC(100));
         LOG_INF("send");

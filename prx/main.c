@@ -30,7 +30,7 @@ static const struct gpio_dt_spec leds[] = {
 static const struct device *led_port;
 static struct esb_payload rx_payload;
 static struct esb_payload tx_payload = ESB_CREATE_PAYLOAD(0,
-    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17);
+    'p', 't', 'x', ' ', 'm', 'a', 'i', 'n', 0);
 
 static int leds_init(void)
 {
@@ -86,17 +86,16 @@ void event_handler(struct esb_evt const *event)
         break;
     case ESB_EVENT_RX_RECEIVED:
         if (esb_read_rx_payload(&rx_payload) == 0) {
-            LOG_INF("Packet received, len %d : "
-                "0x%02x, 0x%02x, 0x%02x, 0x%02x, "
-                "0x%02x, 0x%02x, 0x%02x, 0x%02x",
-                rx_payload.length, rx_payload.data[0],
-                rx_payload.data[1], rx_payload.data[2],
-                rx_payload.data[3], rx_payload.data[4],
-                rx_payload.data[5], rx_payload.data[6],
-                rx_payload.data[7]);
+
+            int length = strnlen(rx_payload.data, 32);
+            if (length < 32)
+                LOG_INF("[%d] %s", length, rx_payload.data);
+            else
+                LOG_HEXDUMP_INF(rx_payload.data, length, "Packet received");
 
             leds_update(rx_payload.data[1]);
-        } else {
+        } 
+        else {
             LOG_ERR("Error while reading rx packet");
         }
         break;
@@ -133,9 +132,12 @@ int clocks_start(void)
 int esb_initialize(void)
 {
     int err;
+    int channel = -1;
+
     /* These are arbitrary default addresses. In end user products
      * different addresses should be used for each set of devices.
      */
+#if 0  // ESB_DPL   
     uint8_t base_addr_0[4] = {0xE7, 0xE7, 0xE7, 0xE7};
     uint8_t base_addr_1[4] = {0xC2, 0xC2, 0xC2, 0xC2};
     uint8_t addr_prefix[8] = {0xE7, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8};
@@ -143,15 +145,43 @@ int esb_initialize(void)
     struct esb_config config = ESB_DEFAULT_CONFIG;
 
     config.protocol = ESB_PROTOCOL_ESB_DPL;
+    config.retransmit_delay = 600;
     config.bitrate = ESB_BITRATE_2MBPS;
-    config.mode = ESB_MODE_PRX;
     config.event_handler = event_handler;
+    config.mode = ESB_MODE_PRX;
     config.selective_auto_ack = true;
+
+#else  // ESP  (legacy)
+#if 1    
+    uint8_t base_addr_0[4] = {0x22, 0x33, 0x44, 0x55}; 
+    uint8_t base_addr_1[4] = {0xBB, 0xCC, 0xDD, 0xEE};
+    uint8_t addr_prefix[8] = {0x11, 0xAA, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8}; 
+#else
+    uint8_t base_addr_0[4] = {0xE7, 0xE7, 0xE7, 0xE7};
+    uint8_t base_addr_1[4] = {0xC2, 0xC2, 0xC2, 0xC2};
+    uint8_t addr_prefix[8] = {0xE7, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8};     
+#endif
+    struct esb_config config = ESB_LEGACY_CONFIG;
+ 
+    config.protocol = ESB_PROTOCOL_ESB;
+    config.retransmit_delay = 600;
+    config.bitrate = ESB_BITRATE_2MBPS;
+    config.event_handler = event_handler;
+    config.mode = ESB_MODE_PRX;
+    config.selective_auto_ack = false;
+#endif
 
     err = esb_init(&config);
     if (err) {
         return err;
     }
+
+    err = esb_set_rf_channel(0);  // 2.400GHz
+    if (err) {
+        return err;
+    }
+    esb_get_rf_channel(&channel);
+    LOG_INF("Using channel: %dMHz", 2400 + channel);
 
     err = esb_set_base_address_0(base_addr_0);
     if (err) {
@@ -175,7 +205,7 @@ void main(void)
 {
     int err;
 
-    LOG_INF("Enhanced ShockBurst prx sample");
+    LOG_INF("prx sample");
 
     err = clocks_start();
     if (err) {

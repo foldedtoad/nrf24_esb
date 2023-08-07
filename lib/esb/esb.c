@@ -17,6 +17,9 @@
 #include <stddef.h>
 #include <string.h>
 
+#include <zephyr/logging/log.h> 
+LOG_MODULE_REGISTER(esb_lib, 3);
+
 /* Constants */
 
 /* 2 Mb RX wait for acknowledgment time-out value.
@@ -271,14 +274,12 @@ static void update_radio_addresses(uint8_t update_mask)
 	}
 
 	if ((update_mask & ADDR_UPDATE_MASK_BASE1) != 0) {
-		NRF_RADIO->BASE1 = addr_conv(esb_addr.base_addr_p1);
+		NRF_RADIO->BASE1 = addr_conv(esb_addr.base_addr_p1);		
 	}
 
 	if ((update_mask & ADDR_UPDATE_MASK_PREFIX) != 0) {
-		NRF_RADIO->PREFIX0 =
-			bytewise_bit_swap(&esb_addr.pipe_prefixes[0]);
-		NRF_RADIO->PREFIX1 =
-			bytewise_bit_swap(&esb_addr.pipe_prefixes[4]);
+		NRF_RADIO->PREFIX0 = bytewise_bit_swap(&esb_addr.pipe_prefixes[0]);
+		NRF_RADIO->PREFIX1 = bytewise_bit_swap(&esb_addr.pipe_prefixes[4]);
 	}
 }
 
@@ -524,7 +525,7 @@ static void start_tx_transaction(void)
 	current_payload = tx_fifo.payload[tx_fifo.front];
 
 	switch (esb_cfg.protocol) {
-	case ESB_PROTOCOL_ESB:
+	case ESB_PROTOCOL_ESB:	
 		update_rf_payload_format(current_payload->length);
 		tx_payload_buffer[0] = current_payload->pid;
 		tx_payload_buffer[1] = 0;
@@ -772,13 +773,17 @@ static void on_radio_disabled_rx(void)
 	bool send_rx_event = true;
 	struct pipe_info *pipe_info;
 
+	//LOG_INF("%s[%d]", __func__, __LINE__);
+
 	if (NRF_RADIO->CRCSTATUS == 0) {
 		clear_events_restart_rx();
-		return;
+		LOG_INF("CRC Status: 0x%x", NRF_RADIO->CRCSTATUS);
+		//return;
 	}
 
 	if (rx_fifo.count >= CONFIG_ESB_RX_FIFO_SIZE) {
 		clear_events_restart_rx();
+		LOG_INF("rx_fifo.count: %d", rx_fifo.count);
 		return;
 	}
 
@@ -798,12 +803,15 @@ static void on_radio_disabled_rx(void)
 		NRF_RADIO->SHORTS = radio_shorts_common |
 				    RADIO_SHORTS_DISABLED_RXEN_Msk;
 
+		
 		switch (esb_cfg.protocol) {
 		case ESB_PROTOCOL_ESB_DPL:
+			LOG_INF("%s[%d]", __func__, __LINE__);
 			on_radio_disabled_rx_dpl(retransmit_payload, pipe_info);
 			break;
 
 		case ESB_PROTOCOL_ESB:
+			LOG_INF("%s[%d]", __func__, __LINE__);
 			update_rf_payload_format(0);
 			tx_payload_buffer[0] = rx_payload_buffer[0];
 			tx_payload_buffer[1] = 0;
@@ -861,6 +869,8 @@ static void get_and_clear_irqs(uint32_t *interrupts)
 
 static void RADIO_IRQHandler(void)
 {
+	//LOG_INF("%s[%d]", __func__, __LINE__);
+
 	if (NRF_RADIO->EVENTS_READY &&
 	    (NRF_RADIO->INTENSET & RADIO_INTENSET_READY_Msk)) {
 		NRF_RADIO->EVENTS_READY = 0;
@@ -876,6 +886,7 @@ static void RADIO_IRQHandler(void)
 		if (on_radio_end) {
 			on_radio_end();
 		}
+		LOG_INF("%s[%d]", __func__, __LINE__);
 	}
 
 	if (NRF_RADIO->EVENTS_DISABLED &&
@@ -887,6 +898,7 @@ static void RADIO_IRQHandler(void)
 		if (on_radio_disabled) {
 			on_radio_disabled();
 		}
+		LOG_INF("%s[%d]", __func__, __LINE__);		
 	}
 }
 
@@ -1026,12 +1038,15 @@ int esb_write_payload(const struct esb_payload *payload)
 	    payload->length > CONFIG_ESB_MAX_PAYLOAD_LENGTH ||
 	    (esb_cfg.protocol == ESB_PROTOCOL_ESB &&
 	     payload->length > esb_cfg.payload_length)) {
+		LOG_ERR("%s[%d]: error: EMSGSIZE", __func__, __LINE__);
 		return -EMSGSIZE;
 	}
 	if (tx_fifo.count >= CONFIG_ESB_TX_FIFO_SIZE) {
+		LOG_ERR("%s[%d]: error: ENOMEM", __func__, __LINE__);
 		return -ENOMEM;
 	}
 	if (payload->pipe >= CONFIG_ESB_PIPE_COUNT) {
+		LOG_ERR("%s[%d]: error: EINVAL", __func__, __LINE__);		
 		return -EINVAL;
 	}
 
@@ -1053,7 +1068,7 @@ int esb_write_payload(const struct esb_payload *payload)
 
 	if (esb_cfg.mode == ESB_MODE_PTX &&
 	    esb_cfg.tx_mode == ESB_TXMODE_AUTO &&
-	    esb_state == ESB_STATE_IDLE) {
+	    esb_state == ESB_STATE_IDLE) {	
 		start_tx_transaction();
 	}
 
@@ -1244,6 +1259,8 @@ int esb_set_base_address_0(const uint8_t *addr)
 
 	memcpy(esb_addr.base_addr_p0, addr, sizeof(esb_addr.base_addr_p0));
 
+	//LOG_HEXDUMP_INF(esb_addr.base_addr_p0, sizeof(esb_addr.base_addr_p0), "PTX");
+
 	update_radio_addresses(ADDR_UPDATE_MASK_BASE0);
 
 	return 0;
@@ -1259,6 +1276,8 @@ int esb_set_base_address_1(const uint8_t *addr)
 	}
 
 	memcpy(esb_addr.base_addr_p1, addr, sizeof(esb_addr.base_addr_p1));
+
+	//LOG_HEXDUMP_INF(esb_addr.base_addr_p1, sizeof(esb_addr.base_addr_p1), "PRX");
 
 	update_radio_addresses(ADDR_UPDATE_MASK_BASE1);
 
