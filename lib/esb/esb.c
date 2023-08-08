@@ -812,7 +812,7 @@ static void on_radio_disabled_rx(void)
 			break;
 
 		case ESB_PROTOCOL_ESB:
-			LOG_INF("%s[%d]", __func__, __LINE__);
+			//LOG_INF("%s[%d]", __func__, __LINE__);
 			update_rf_payload_format(0);
 			tx_payload_buffer[0] = rx_payload_buffer[0];
 			tx_payload_buffer[1] = 0;
@@ -1421,3 +1421,63 @@ int esb_reuse_pid(uint8_t pipe)
 
 	return 0;
 }
+
+void esb_show_config(struct esb_config * config)
+{
+    char * text;
+
+    LOG_INF("------------------------------------------");
+    text = (config->protocol == ESB_PROTOCOL_ESB_DPL) ? "ESB_DPL" : "ESB";
+    LOG_INF("protocol:           %s", text);
+
+    text = (config->mode == ESB_MODE_PTX) ? "PTX" : "PRX";
+    LOG_INF("mode:               %s", text);
+
+    LOG_INF("event_handler:      %p", config->event_handler);
+
+    text = (config->bitrate == ESB_BITRATE_2MBPS) ? "2Mbps" : 
+           (config->bitrate == ESB_BITRATE_1MBPS) ? "1Mbps" : "250Kbps";
+    LOG_INF("bitrate:            %s", text);
+    
+    text = (config->crc == ESB_CRC_16BIT) ? "16bit" : 
+           (config->crc == ESB_CRC_8BIT)  ? "8bit" : "none";
+    LOG_INF("crc:                %s", text);
+
+    switch(config->tx_output_power) {
+        #if !defined(CONFIG_SOC_NRF5340_CPUNET)        
+        case ESB_TX_POWER_4DBM :     text = "4dBm";   break;
+        #endif
+        #if defined(CONFIG_SOC_SERIES_NRF52X)
+        case ESB_TX_POWER_3DBM :     text = "3dBm";   break;
+        #endif        
+        case ESB_TX_POWER_0DBM :     text = "0dBm";   break;
+        case ESB_TX_POWER_NEG4DBM :  text = "-4dBm";  break;
+        case ESB_TX_POWER_NEG8DBM :  text = "-8dBm";  break;
+        case ESB_TX_POWER_NEG12DBM : text = "-12dBm"; break;
+        case ESB_TX_POWER_NEG16DBM : text = "-16dBm"; break;
+        case ESB_TX_POWER_NEG20DBM : text = "-20dBm"; break;
+        case ESB_TX_POWER_NEG30DBM : text = "-30dBm"; break;
+        //case ESB_TX_POWER_NEG40DBM : text = "-40dBm"; break;
+        default: text = "??"; break;
+    }
+    LOG_INF("output_power:       %s", text);
+
+    LOG_INF("retransmit_delay:   %d", config->retransmit_delay);
+
+    LOG_INF("retransmit_count:   %d", config->retransmit_count);
+
+    text = (config->tx_mode == ESB_TXMODE_AUTO) ? "Auto" : 
+           (config->tx_mode == ESB_TXMODE_MANUAL) ? "Manual" : "Manual Start";
+    LOG_INF("tx_mode:            %s", text);
+
+    LOG_INF("radio_irq_priority: %d", config->radio_irq_priority);
+
+    LOG_INF("event_irq_priority: %d", config->event_irq_priority);
+
+    LOG_INF("payload_length:     %d", config->payload_length);
+
+    LOG_INF("selective_auto_ack: %s", (config->selective_auto_ack) ? "true" : "false");
+
+    LOG_INF("------------------------------------------");           
+}
+

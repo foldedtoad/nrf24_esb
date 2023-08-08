@@ -92,6 +92,12 @@ int clocks_start(void)
     return 0;
 }
 
+void esb_show_addr(uint8_t prefix, uint8_t * base_addr, char * title)
+{
+    LOG_INF("%s: 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x", title,
+            prefix, base_addr[0], base_addr[1], base_addr[2], base_addr[3]);
+}
+
 int esb_initialize(void)
 {
     int err;
@@ -123,12 +129,17 @@ int esb_initialize(void)
  
     config.protocol = ESB_PROTOCOL_ESB;
     config.retransmit_delay = 600;
-    config.crc = ESB_CRC_8BIT;
+    config.crc = ESB_CRC_16BIT;
     config.bitrate = ESB_BITRATE_2MBPS;
     config.event_handler = event_handler;
     config.mode = ESB_MODE_PTX;
     config.selective_auto_ack = false;
 #endif
+
+    esb_show_config(&config);
+
+    esb_show_addr(addr_prefix[0], (uint8_t*) &base_addr_0, "base_addr_0");
+    esb_show_addr(addr_prefix[1], (uint8_t*) &base_addr_1, "base_addr_1");
 
     err = esb_init(&config);
 

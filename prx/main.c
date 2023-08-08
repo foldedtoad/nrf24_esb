@@ -84,7 +84,7 @@ void event_handler(struct esb_evt const *event)
 
             int length = strnlen(rx_payload.data, 32);
             if (length < 32) {
-                LOG_INF("[%d] %s", length, rx_payload.data);
+                LOG_INF("[%d] %s", length, &rx_payload.data[1]);
                 leds_update('0' - rx_payload.data[1]);
             }
             else {
@@ -125,6 +125,12 @@ int clocks_start(void)
     return 0;
 }
 
+void esb_show_addr(uint8_t prefix, uint8_t * base_addr, char * title)
+{
+    LOG_INF("%s: 0x%02x, 0x%02x, 0x%02x, 0x%02x, 0x%02x", title,
+            prefix, base_addr[0], base_addr[1], base_addr[2], base_addr[3]);
+}
+
 int esb_initialize(void)
 {
     int err;
@@ -148,20 +154,25 @@ int esb_initialize(void)
     config.selective_auto_ack = true;
 
 #else  // ESB  (legacy)
-    uint8_t base_addr_0[4] = {0x22, 0x33, 0x44, 0x55}; 
-    uint8_t base_addr_1[4] = {0xBB, 0xCC, 0xDD, 0xEE};
-    uint8_t addr_prefix[8] = {0x11, 0xAA, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8}; 
+    uint8_t base_addr_0[4] = {0xBB, 0xCC, 0xDD, 0xEE};
+    uint8_t base_addr_1[4] = {0x22, 0x33, 0x44, 0x55};     
+    uint8_t addr_prefix[8] = {0xAA, 0x11, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8}; 
 
     struct esb_config config = ESB_LEGACY_CONFIG;
  
     config.protocol = ESB_PROTOCOL_ESB;
     config.retransmit_delay = 600;
-    config.crc = ESB_CRC_8BIT;
+    config.crc = ESB_CRC_16BIT;
     config.bitrate = ESB_BITRATE_2MBPS;
     config.event_handler = event_handler;
     config.mode = ESB_MODE_PRX;
     config.selective_auto_ack = false;
 #endif
+
+    esb_show_config(&config);
+
+    esb_show_addr(addr_prefix[0], (uint8_t*) &base_addr_0, "base_addr_0");
+    esb_show_addr(addr_prefix[1], (uint8_t*) &base_addr_1, "base_addr_1");
 
     err = esb_init(&config);
     if (err) {

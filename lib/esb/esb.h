@@ -491,6 +491,14 @@ int esb_set_bitrate(enum esb_bitrate bitrate);
  */
 int esb_reuse_pid(uint8_t pipe);
 
+
+/** @brief send formated dump of config to console.
+ *
+ *  @param[in] struct esb_config * config.
+ *
+ */
+void esb_show_config(struct esb_config * config);
+
 /** @} */
 
 #ifdef __cplusplus
