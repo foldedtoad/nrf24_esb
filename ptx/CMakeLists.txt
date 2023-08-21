@@ -1,5 +1,7 @@
 #   Configure and Make PTX side
 #
+#   Tested with PCA10000, PCA10028, PCA10040, and PCA10056
+#
 set(BOARD nrf51dk_nrf51422)
 #set(BOARD nrf52840dk_nrf52840)
 

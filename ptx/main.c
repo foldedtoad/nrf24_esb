@@ -9,9 +9,11 @@
 #include <zephyr/irq.h>
 #include <zephyr/logging/log.h>
 #include <nrf.h>
-#include <esb.h>
 #include <zephyr/kernel.h>
 #include <zephyr/types.h>
+
+#include "esb.h"
+#include "esb_utils.h"
 
 LOG_MODULE_REGISTER(esb_ptx, 3);
 
@@ -28,7 +30,6 @@ static const struct gpio_dt_spec leds[] = {
 };
 
 static bool ready = true;
-static const struct device *led_port;
 static struct esb_payload rx_payload;
 static struct esb_payload tx_payload = ESB_CREATE_PAYLOAD(0,
     0x01, 0x00, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08);
@@ -97,9 +98,15 @@ int esb_initialize(void)
     /* These are arbitrary default addresses. In end user products
      * different addresses should be used for each set of devices.
      */
+#if 0     
     uint8_t base_addr_0[4] = {0xE7, 0xE7, 0xE7, 0xE7};
     uint8_t base_addr_1[4] = {0xC2, 0xC2, 0xC2, 0xC2};
     uint8_t addr_prefix[8] = {0xE7, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8};
+#else
+    uint8_t base_addr_0[4] = {0x22, 0x33, 0x44, 0x55};
+    uint8_t base_addr_1[4] = {0xBB, 0xCC, 0xDD, 0xEE};
+    uint8_t addr_prefix[8] = {0x11, 0x11, 0x11, 0x11, 0xAA, 0xAA, 0xAA, 0xAA};
+#endif
 
     struct esb_config config = ESB_DEFAULT_CONFIG;
 
@@ -108,7 +115,7 @@ int esb_initialize(void)
     config.bitrate = ESB_BITRATE_2MBPS;
     config.event_handler = event_handler;
     config.mode = ESB_MODE_PTX;
-    config.selective_auto_ack = true;
+    config.selective_auto_ack = false;
 
     err = esb_init(&config);
 
@@ -160,21 +167,15 @@ static void leds_update(uint8_t value)
     bool led2_status = !(value % 8 > 2 && value % 8 <= 6);
     bool led3_status = !(value % 8 > 3);
 
-    gpio_port_pins_t mask =
-        1 << DT_GPIO_PIN(DT_ALIAS(led0), gpios) |
-        1 << DT_GPIO_PIN(DT_ALIAS(led1), gpios) |
-        1 << DT_GPIO_PIN(DT_ALIAS(led2), gpios) |
-        1 << DT_GPIO_PIN(DT_ALIAS(led3), gpios);
+    gpio_port_pins_t mask = BIT(leds[0].pin) | BIT(leds[1].pin) |
+                            BIT(leds[2].pin) | BIT(leds[3].pin);
 
-    gpio_port_value_t val =
-        led0_status << DT_GPIO_PIN(DT_ALIAS(led0), gpios) |
-        led1_status << DT_GPIO_PIN(DT_ALIAS(led1), gpios) |
-        led2_status << DT_GPIO_PIN(DT_ALIAS(led2), gpios) |
-        led3_status << DT_GPIO_PIN(DT_ALIAS(led3), gpios);
+    gpio_port_value_t val = led0_status << leds[0].pin |
+                            led1_status << leds[1].pin |
+                            led2_status << leds[2].pin |
+                            led3_status << leds[3].pin;
 
-    if (led_port != NULL) {
-        (void)gpio_port_set_masked_raw(led_port, mask, val);
-    }
+    (void)gpio_port_set_masked_raw(leds[0].port, mask, val);
 }
 
 void main(void)
@@ -195,6 +196,10 @@ void main(void)
         LOG_ERR("ESB initialization failed, err %d", err);
         return;
     }
+
+    esb_set_rf_channel(0);  // set frequency to 2.400GHz
+
+    show_addresses_from_register();
 
     LOG_INF("Initialization complete");
     LOG_INF("Sending test packet");
