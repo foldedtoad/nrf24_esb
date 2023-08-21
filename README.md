@@ -1,4 +1,4 @@
-# nrf24_esb
+# nrf24_esb -- Enhanced ShockBurst for Nordic SoCs
 Simple Enhanced ShockBurst emulation on nRF5x Platform -- (nRF52422/PCA10028 board)
 It should also work with the nRF53832/PCA10040 board as well.
 
@@ -6,15 +6,21 @@ It should also work with the nRF53832/PCA10040 board as well.
 
 
 ## Building
-This project was built with Zephyr V2.5 in Ubuntu 18.04.  
-You will need to modify the CMakeList.txt to select the target board and the PTX (sender) or PRX (receiver) side.  
-It is assumed you have Segger's JLink installed on your build system: all Nordic dev-kit boards directly include support JLink, so its recommended to use it.
+This project was built with Zephyr V3.4 in Ubuntu 22.04 LTS.   
+You will need to build each executable: PTX (sender) and PRX (receiver).  
+
+To build, enter the disired directory, either ptx or prx.  
+Next invoke the "./comfigure.sh" command to setup the build environment.   
+Finally, enter the build directory and run make.  
+
+It is assumed you have Segger's JLink installed on your build system.
+All Nordic dev-kit boards directly include support JLink, so its recommended to use it: the download is free.
 
 ## Running and Debugging
-I used the Ozone debugger from Segger, but the gdb debugger should work as well ("make debug" will kick off gdb process)
-If you want to see the console messages, don't have or want Ozone, then I have included a simple "rtt.sh" script which will display the RTT console output.
+This project was developed using the Ozone debugger from Segger, but the gdb debugger should work as well.   
+If you want to see the console messages, don't have or want Ozone, a simple "rtt.sh" script is included, which will display the RTT console output.
 
-Since the interaction is based on ESB, the sending side (PTX) will indicate transmit failures until it gets a reply back from the receiver (PRX).
+Since the interaction is based on ESB, the sending side (PTX) will indicate transmit failures until it gets a reply (ACK) back from the receiver (PRX).
 This means that you should probably start the PRX side first, then the PTX.  The PRX side will quitely wait for the PTX side to start sending.
 
 ## Sniffing nRF24 packets
